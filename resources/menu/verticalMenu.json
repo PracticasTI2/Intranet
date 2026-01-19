@@ -1,0 +1,140 @@
+{
+    "menu": [
+        {
+            "url": "/",
+            "name": "Inicio",
+            "icon": "menu-icon tf-icons bx bx-layout",
+            "slug": "dashboard-analytics"
+        },
+        {
+            "name": "Requisiciones",
+            "icon": "menu-icon bx bx-list-check",
+            "slug": "requisiciones",
+            "permission": "requisiciones-view",
+            "submenu": [
+                {
+                    "url": "/requisiciones/index",
+                    "name": "Requisiciones",
+                    "slug": "requisiciones-index",
+                    "permission": "requisiciones-view"
+                },
+                {
+                    "url": "/requisiciones/historico",
+                    "name": "Histórico",
+                    "slug": "requisiciones-historico",
+                    "permission": "historico-view"
+                }
+            ]
+        },
+        {
+            "name": "Cotizaciones",
+            "icon": "menu-icon bx bxs-store",
+            "slug": "cotizaciones",
+            "permission": "cotizaciones-view",
+            "submenu": [
+                {
+                    "url": "/cotizaciones/index",
+                    "name": "Requisiciones por cotizar",
+                    "slug": "cotizaciones-index",
+                    "permission": [
+                        "cotizaciones-view",
+                        "cotizaciones-subir"
+                    ]
+                },
+                {
+                    "url": "/cotizaciones/cotisporautorizar",
+                    "name": "Cotizaciones por autorizar",
+                    "slug": "cotizaciones-cotisporautorizar",
+                    "permission": [
+                        "cotizaciones-view",
+                        "cotizaciones-autorizar"
+                    ]
+                },
+                {
+                    "url": "/cotizaciones/cotisliberadas",
+                    "name": "Cotizaciones Liberadas",
+                    "slug": "cotizaciones-cotisliberadas",
+                    "permission": [
+                        "cotizaciones-view",
+                        "cotizaciones-liberadas",
+                        "factura-view"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Usuarios",
+            "icon": "menu-icon bx bxs-user",
+            "slug": "usuarios",
+            "permission": "adminusuarios-view",
+            "submenu": [
+                {
+                    "url": "/usuarios/index",
+                    "name": "Usuarios",
+                    "slug": "usuarios-index",
+                    "permission": "adminusuarios-view"
+                },
+                {
+                    "url": "/usuarios/areas/index",
+                    "name": "Areas",
+                    "slug": "usuarios-areas-index",
+                    "permission": "adminusuarios-view"
+                }
+            ]
+        },
+        {
+            "name": "Tableros",
+            "icon": "menu-icon bx bxs-devices",
+            "slug": "tableros",
+            "permission": "tableros-view",
+            "submenu": [
+                {
+                    "url": "/tableros/index",
+                    "name": "Tableros",
+                    "slug": "tableros-index",
+                    "permission": "tableros-view"
+                }
+            ]
+        },
+        {
+            "name": "Roles",
+            "icon": "menu-icon bx bx-street-view",
+            "slug": "roles",
+            "permission": "adminusuarios-view",
+            "submenu": [
+                {
+                    "url": "/roles/index",
+                    "name": "Roles",
+                    "slug": "roles-index",
+                    "permission": "adminusuarios-view"
+                }
+            ]
+        },
+        {
+            "name": "Permisos",
+            "icon": "menu-icon bx bx-lock-open-alt",
+            "slug": "permisos",
+            "permission": "adminusuarios-view",
+            "submenu": [
+                {
+                    "url": "/permisos/index",
+                    "name": "Permisos",
+                    "slug": "permisos-index",
+                    "permission": "adminusuarios-view"
+                }
+            ]
+        },
+        {
+            "url": "/vacaciones/index",
+            "name": "Agenda",
+            "icon": "menu-icon bx bx-calendar",
+            "slug": "vacaciones"
+        },
+        {
+            "url": "/prueba-menu",
+            "name": "Prueba Menú",
+            "icon": "menu-icon bx bx-test-tube",
+            "slug": "prueba-menu"
+        }
+    ]
+}
