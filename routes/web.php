@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RequisicionesController;
+use App\Http\Controllers\Eventoscontroller;
 
 /*
 |--------------------------------------------------------------------------
@@ -138,3 +139,7 @@ Route::post('/autorizar/{id}', $controller_path . '\EventosController@autorizar'
 Route::get('/prueba-menu', function () {
     return view('prueba-menu');
 })->middleware('auth')->name('prueba-menu');
+
+
+// En postman
+Route::get('/vacaciones', $controller_path . '\EventosController@apliListar')->name('vacaciones');

@@ -72,33 +72,6 @@ class EventosController extends Controller
     // {
     //     $user = auth()->user();
 
-
-
-    //     // $rol = User::where('email', $user->samaccountname[0])
-    //     //     ->join('model_has_roles', 'model_has_roles.model_id', '=', 'users.id')
-    //     //     ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-    //     //     ->pluck('model_has_roles.role_id')
-    //     //     ->first();
-
-    //     // $iduser = User::where('email', $user->samaccountname[0])
-    //     //     ->pluck('users.id')
-    //     //     ->first();
-
-    //     // $eventos = FechaVacacione::orderBy('created_at', 'asc')->get();
-
-    //     // $sam = $user->samaccountname[0];
-
-    //     // if (isset($user->cn) && count($user->cn) > 0) {
-    //     //     // Accede al primer valor del array "cn"
-    //     //     $ldapName = $user->cn[0];
-    //     // } else {
-    //     //     // Si no hay un valor "cn", establece un valor predeterminado o maneja la situación según sea necesario
-    //     //     $ldapName = 'Nombre por defecto';
-    //     // }
-
-
-    //     // return view('vacaciones.index', compact('eventos', 'ldapName', 'sam', 'user', 'rol', 'iduser'));
-
     //     return view('vacaciones.index', compact('user'));
     //     // return view('vacaciones.index');
 
@@ -109,23 +82,35 @@ class EventosController extends Controller
     {
         $user = auth()->user();
 
+        // El iduser es el ID de la tabla users (Laravel)
         $iduser = $user->id;
 
-        // Si todavía no manejas roles bien, deja un default:
-        // (mejor luego lo ligamos a Spatie)
-        $rol = $user->hasRole('admin') ? 1 : 2;  // ejemplo
-        // o temporal:
-        // $rol = 2;
+        // Define el rol (temporalmente hasta configurar Spatie)
+        // Si tienes Spatie instalado:
+        // $rol = $user->hasRole('admin') ? 1 : 2;
+        $rol = $user->role_id ?? 2; //
 
-        $sam = $user->name; // lo estás usando en la vista
-        $ldapName = $user->name ?? 'Nombre por defecto';
+        // Si no tienes Spatie, puedes usar esto temporalmente:
+        // $rol = $user->role_id ?? 2; // Si tienes un campo role_id en users
+        // O si no:
+        // $rol = 2; // Por defecto usuario normal
+
+        $sam = $user->name;
+
+        // Para ldapName, puedes obtenerlo de user o crear uno
+        $ldapName = $user->name ?? 'Usuario';
+
+        // // DEPURACIÓN: Agrega esto para verificar
+        // \Log::info('Datos del usuario en calendario', [
+        //     'user_id' => $user->id,
+        //     'user_name' => $user->name,
+        //     'user_email' => $user->email,
+        //     'iduser_pasado' => $iduser,
+        //     'rol_pasado' => $rol
+        // ]);
 
         return view('vacaciones.index', compact('sam', 'ldapName', 'rol', 'iduser'));
     }
-
-
-
-
 
     public function registrar(Request $request)
     {
@@ -208,34 +193,158 @@ class EventosController extends Controller
         return response()->json(['msg' => 'Fecha disponible', 'tipo' => 'success']);
     }
 
+    // public function listar()
+    // {
+    //     // Con relación eager loading si tienes la relación definida
+    //     $eventos = FechaVacacione::with(['datoUsuario' => function ($query) {
+    //         $query->select('user_id', 'nombre', 'apaterno', 'amaterno');
+    //     }])
+    //         ->orderBy('created_at', 'asc')
+    //         ->get()
+    //         ->map(function ($evento) {
+    //             $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
+    //             $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
+
+    //             // Ajuste para FullCalendar
+    //             $fechaFin->modify('+1 day');
+
+    //             $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
+
+    //             // Usar el nombre de datoUsuario si existe, si no usar nombre_usuario
+    //             $nombreUsuario = $evento->datoUsuario
+    //                 ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
+    //                 : $evento->nombre_usuario;
+
+    //             return [
+    //                 'id' => $evento->id,
+    //                 'title' => $nombreUsuario,
+    //                 'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
+    //                 'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
+    //                 'end' => $fechaFin->format('Y-m-d\TH:i:s'),
+    //                 'color' => $evento->color,
+    //                 'iduser' => $evento->iduser,
+    //                 'estatus' => $evento->estatus,
+    //                 'allDay' => true,
+    //                 'extendedProps' => [
+    //                     'nombre_usuario' => $nombreUsuario, // Nombre limpio
+    //                     'iduser' => $evento->iduser,
+    //                     'estatus' => $evento->estatus,
+    //                 ]
+    //             ];
+    //         });
+
+    //     return response()->json($eventos);
+    // }
 
     public function listar()
     {
-        $eventos = FechaVacacione::orderBy('created_at', 'asc')->get()->map(function ($evento) {
+        $user = auth()->user();
+        $userId = $user->id;
+        $rol = $user->role_id ?? 2;
+
+        // Depuración
+        // \Log::info('Usuario solicitando eventos', [
+        //     'user_id' => $userId,
+        //     'rol' => $rol,
+        //     'user_name' => $user->name
+        // ]);
+
+        // Si es usuario normal, solo sus eventos
+        if ($rol == 2) {
+            $eventos = FechaVacacione::where('iduser', $userId)
+                ->orderBy('created_at', 'asc')
+                ->get();
+        }
+        // Si es admin, todos los eventos de la BD
+        else if ($rol == 1) {
+            $eventos = FechaVacacione::orderBy('created_at', 'asc')->get();
+        }
+        // Por defecto, solo sus eventos
+        else {
+            $eventos = FechaVacacione::where('iduser', $userId)
+                ->orderBy('created_at', 'asc')
+                ->get();
+        }
+
+        // Transformar eventos para FullCalendar
+        $eventosFormateados = $eventos->map(function ($evento) {
             $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
             $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
-
-            // Ajusta la fecha de fin para que sea inclusive
             $fechaFin->modify('+1 day');
 
             $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
 
+            // Obtener nombre del usuario
+            // $nombreUsuario = $evento->nombre_usuario;
+
+            // Obtener el nombre de datoUsuario si existe, si no usar nombre_usuario
+            $nombreUsuario = $evento->datoUsuario
+                ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
+                : $evento->nombre_usuario;
+
             return [
                 'id' => $evento->id,
-                'title' => $evento->nombre_usuario . ' - Creado el ' . $fechaCreacion->format('d-m-Y H:i:s'),
+                'title' => $nombreUsuario,
+                'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
                 'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
                 'end' => $fechaFin->format('Y-m-d\TH:i:s'),
                 'color' => $evento->color,
                 'iduser' => $evento->iduser,
                 'estatus' => $evento->estatus,
                 'allDay' => true,
-                // Añador más propiedades si es necesario para el formato de FullCalendar
+                'extendedProps' => [
+                    'nombre_usuario' => $nombreUsuario,
+                    'iduser' => $evento->iduser,
+                    'estatus' => $evento->estatus,
+                ]
             ];
         });
 
-        return response()->json($eventos);
+        return response()->json($eventosFormateados);
     }
 
+    public function apiListar()
+    {
+        // Con relación eager loading para la relación definida
+        $eventos = FechaVacacione::with(['datoUsuario' => function ($query) {
+            $query->select('user_id', 'nombre', 'apaterno', 'amaterno');
+        }])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($evento) {
+                $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
+                $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
+
+                // Ajuste para FullCalendar
+                $fechaFin->modify('+1 day');
+
+                $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
+
+                // Usar el nombre de datoUsuario si existe, si no usar nombre_usuario
+                $nombreUsuario = $evento->datoUsuario
+                    ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
+                    : $evento->nombre_usuario;
+
+                return [
+                    'id' => $evento->id,
+                    'title' => $nombreUsuario,
+                    'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
+                    'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
+                    'end' => $fechaFin->format('Y-m-d\TH:i:s'),
+                    'color' => $evento->color,
+                    'iduser' => $evento->iduser,
+                    'estatus' => $evento->estatus,
+                    'allDay' => true,
+                    'extendedProps' => [
+                        'nombre_usuario' => $nombreUsuario, // Nombre limpio
+                        'iduser' => $evento->iduser,
+                        'estatus' => $evento->estatus,
+                    ]
+                ];
+            });
+
+        return response()->json($eventos);
+    }
 
 
     public function eliminarEvento($id)
@@ -259,6 +368,7 @@ class EventosController extends Controller
             return response()->json(['msg' => 'Error al eliminar el evento', 'estado' => false, 'tipo' => 'danger']);
         }
     }
+
     // public function drag()
     // {
     //     if (isset($_POST)) {
