@@ -78,7 +78,7 @@ class EventosController extends Controller
     // }
 
 
-    public function index()
+    public function indexCalendario()
     {
         $user = auth()->user();
 
@@ -109,7 +109,27 @@ class EventosController extends Controller
         //     'rol_pasado' => $rol
         // ]);
 
-        return view('vacaciones.index', compact('sam', 'ldapName', 'rol', 'iduser'));
+        return view('vacaciones.calendario', compact('sam', 'ldapName', 'rol', 'iduser'));
+    }
+
+    public function indexAgenda()
+    {
+        $user = auth()->user();
+
+        // El iduser es el ID de la tabla users (Laravel)
+        $iduser = $user->id;
+
+        // Define el rol (temporalmente hasta configurar Spatie)
+        // Si tienes Spatie instalado:
+        // $rol = $user->hasRole('admin') ? 1 : 2;
+        $rol = $user->role_id ?? 2; //
+
+        $sam = $user->name;
+
+        // Para ldapName, puedes obtenerlo de user o crear uno
+        $ldapName = $user->name ?? 'Usuario';
+
+        return view('vacaciones.agenda', compact('sam', 'ldapName', 'rol', 'iduser'));
     }
 
     public function registrar(Request $request)
@@ -193,48 +213,51 @@ class EventosController extends Controller
         return response()->json(['msg' => 'Fecha disponible', 'tipo' => 'success']);
     }
 
-    // public function listar()
-    // {
-    //     // Con relación eager loading si tienes la relación definida
-    //     $eventos = FechaVacacione::with(['datoUsuario' => function ($query) {
-    //         $query->select('user_id', 'nombre', 'apaterno', 'amaterno');
-    //     }])
-    //         ->orderBy('created_at', 'asc')
-    //         ->get()
-    //         ->map(function ($evento) {
-    //             $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
-    //             $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
+    // Listar Agenda
+    public function listarAgenda()
+    {
+        // Con relación eager loading si tienes la relación definida
+        $eventos = FechaVacacione::with(['datoUsuario' => function ($query) {
+            $query->select('user_id', 'nombre', 'apaterno', 'amaterno');
+        }])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($evento) {
+                $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
+                $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
 
-    //             // Ajuste para FullCalendar
-    //             $fechaFin->modify('+1 day');
+                // Ajuste para FullCalendar
+                $fechaFin->modify('+1 day');
 
-    //             $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
+                $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
 
-    //             // Usar el nombre de datoUsuario si existe, si no usar nombre_usuario
-    //             $nombreUsuario = $evento->datoUsuario
-    //                 ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
-    //                 : $evento->nombre_usuario;
+                // Usar el nombre de datoUsuario si existe, si no usar nombre_usuario
+                $nombreUsuario = $evento->datoUsuario
+                    ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
+                    : $evento->nombre_usuario;
 
-    //             return [
-    //                 'id' => $evento->id,
-    //                 'title' => $nombreUsuario,
-    //                 'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
-    //                 'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
-    //                 'end' => $fechaFin->format('Y-m-d\TH:i:s'),
-    //                 'color' => $evento->color,
-    //                 'iduser' => $evento->iduser,
-    //                 'estatus' => $evento->estatus,
-    //                 'allDay' => true,
-    //                 'extendedProps' => [
-    //                     'nombre_usuario' => $nombreUsuario, // Nombre limpio
-    //                     'iduser' => $evento->iduser,
-    //                     'estatus' => $evento->estatus,
-    //                 ]
-    //             ];
-    //         });
+                return [
+                    'id' => $evento->id,
+                    'title' => $nombreUsuario,
+                    'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
+                    'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
+                    'end' => $fechaFin->format('Y-m-d\TH:i:s'),
+                    'color' => $evento->color,
+                    'iduser' => $evento->iduser,
+                    'estatus' => $evento->estatus,
+                    'allDay' => true,
+                    'extendedProps' => [
+                        'nombre_usuario' => $nombreUsuario, // Nombre limpio
+                        'iduser' => $evento->iduser,
+                        'estatus' => $evento->estatus,
+                    ]
+                ];
+            });
 
-    //     return response()->json($eventos);
-    // }
+        return response()->json($eventos);
+    }
+
+    // Listar Calendario
 
     public function listar()
     {
@@ -302,50 +325,6 @@ class EventosController extends Controller
 
         return response()->json($eventosFormateados);
     }
-
-    public function apiListar()
-    {
-        // Con relación eager loading para la relación definida
-        $eventos = FechaVacacione::with(['datoUsuario' => function ($query) {
-            $query->select('user_id', 'nombre', 'apaterno', 'amaterno');
-        }])
-            ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($evento) {
-                $fechaInicio = new \DateTime($evento->fecha_inicio, new \DateTimeZone('America/Mexico_City'));
-                $fechaFin = new \DateTime($evento->fecha_fin, new \DateTimeZone('America/Mexico_City'));
-
-                // Ajuste para FullCalendar
-                $fechaFin->modify('+1 day');
-
-                $fechaCreacion = new \DateTime($evento->created_at, new \DateTimeZone('America/Mexico_City'));
-
-                // Usar el nombre de datoUsuario si existe, si no usar nombre_usuario
-                $nombreUsuario = $evento->datoUsuario
-                    ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
-                    : $evento->nombre_usuario;
-
-                return [
-                    'id' => $evento->id,
-                    'title' => $nombreUsuario,
-                    'Creado el ' => $fechaCreacion->format('d-m-Y H:i:s'),
-                    'start' => $fechaInicio->format('Y-m-d\TH:i:s'),
-                    'end' => $fechaFin->format('Y-m-d\TH:i:s'),
-                    'color' => $evento->color,
-                    'iduser' => $evento->iduser,
-                    'estatus' => $evento->estatus,
-                    'allDay' => true,
-                    'extendedProps' => [
-                        'nombre_usuario' => $nombreUsuario, // Nombre limpio
-                        'iduser' => $evento->iduser,
-                        'estatus' => $evento->estatus,
-                    ]
-                ];
-            });
-
-        return response()->json($eventos);
-    }
-
 
     public function eliminarEvento($id)
     {

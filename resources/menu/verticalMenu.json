@@ -125,9 +125,15 @@
             ]
         },
         {
-            "url": "/vacaciones/index",
-            "name": "Agenda",
+            "url": "/vacaciones/calendario",
+            "name": "Calendario",
             "icon": "menu-icon bx bx-calendar",
+            "slug": "vacaciones"
+        },
+        {
+            "url": "/vacaciones/agenda",
+            "name": "Agenda",
+            "icon": "menu-icon bx bx-notepad",
             "slug": "vacaciones"
         },
         {

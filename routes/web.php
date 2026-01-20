@@ -123,16 +123,17 @@ Route::post('/rechazar-cotizaciones', $controller_path . '\CotizacionesControlle
 Route::post('/cotizaciones/entregado', $controller_path . '\CotizacionesController@entregado')->name('cotizaciones-entregado');
 
 
-
-// Calendario - Agenda vacaciones
-Route::get('/vacaciones/index', $controller_path . '\EventosController@index')->name('vacaciones-index')->middleware('auth');
+// Calendario - vacaciones
+Route::get('/vacaciones/calendario', $controller_path . '\EventosController@indexCalendario')->name('vacaciones-calendario')->middleware('auth');
 Route::get('/listar', $controller_path . '\EventosController@listar')->name('listar');
 Route::post('/verificarDisponibilidad', $controller_path . '\EventosController@verificarDisponibilidad')->name('verificarDisponibilidad');
 Route::post('/registrar', $controller_path . '\EventosController@registrar')->name('registrar');
 Route::delete('/eliminarEvento/{id}', $controller_path . '\EventosController@eliminarEvento')->name('eliminarEvento');
 Route::post('/autorizar/{id}', $controller_path . '\EventosController@autorizar')->name('autorizar');
 
-
+// Agenda 
+Route::get('/vacaciones/agenda', $controller_path . '\EventosController@indexAgenda')->name('vacaciones-agenda')->middleware('auth');
+Route::get('/listarAgenda', $controller_path . '\EventosController@listarAgenda')->name('listarAgenda');
 
 // Rutas de prueba
 
@@ -141,5 +142,3 @@ Route::get('/prueba-menu', function () {
 })->middleware('auth')->name('prueba-menu');
 
 
-// En postman
-Route::get('/vacaciones', $controller_path . '\EventosController@apliListar')->name('vacaciones');
