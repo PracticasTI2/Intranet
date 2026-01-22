@@ -1,6 +1,6 @@
 @extends('layouts/contentNavbarLayout')
 
-@section('title', 'Agenda - Vacaciones')
+@section('title', 'Agenda - Evento')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}">
@@ -57,7 +57,7 @@
                 <p>Usuario ID: {{ $iduser }} | Rol: {{ $rol }} | Nombre: {{ $sam }}</p>
             </div>
 
-            <!-- Modal para agenda (CON asunto) -->
+            <!-- Modal para agenda, puede editar el propietario -->
             <div class="modal fade" id="myModal" data-backdrop="static" data-keyboard="false" tabindex="-1"
                 aria-labelledby="myModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-simple modal-add-new-cc">
@@ -69,7 +69,7 @@
 
                         <form id="formulario" action="">
                             @csrf
-                            <input type="hidden" name="desde_agenda" value="1"> <!-- Para identificar que viene de agenda -->
+                            <input type="hidden" name="desde_agenda" value="1">
 
                             <div class="modal-body">
                                 <input type="hidden" id="id" name="id">
@@ -87,12 +87,11 @@
                                     @endif
                                 </div>
 
-                                <!-- NUEVO: Campo asunto (OPCIONAl/Obligatorio?) solo en agenda -->
+                                <!-- Campo asunto -->
                                 <div class="form-floating mb-3">
                                     <input type="text" class="form-control" id="asunto" name="asunto"
                                         placeholder="Ej: Reunión de equipo, Cita médica, etc." required>
                                     <label for="asunto">Asunto *</label>
-                                    {{-- <small class="text-muted">Este texto aparecerá en la agenda</small> --}}
                                 </div>
 
                                 <div class="form-floating mb-3">
@@ -120,6 +119,55 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Modal para VISUALIZAR evento (solo lectura para otros usuarios) --}}
+            <div class="modal fade" id="modalVisualizar" data-backdrop="static" data-keyboard="false" tabindex="-1"
+                aria-labelledby="modalVisualizarLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-simple modal-add-new-cc">
+                    <div class="modal-content">
+                        <div class="modal-header bg-secondary">
+                            <h5 class="modal-title text-white" id="tituloVisualizar">Información del evento</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <!-- Información del usuario -->
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="visualizar_nombre_user" readonly>
+                                <label for="visualizar_nombre_user">Usuario</label>
+                            </div>
+
+                            <!-- Información del asunto -->
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="visualizar_asunto" readonly>
+                                <label for="visualizar_asunto">Asunto</label>
+                            </div>
+
+                            <!-- Información de fechas -->
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="visualizar_fechain" readonly>
+                                <label for="visualizar_fechain">Fecha de Inicio</label>
+                            </div>
+
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="visualizar_fechafin" readonly>
+                                <label for="visualizar_fechafin">Fecha Final</label>
+                            </div>
+
+                            <!-- Información de estatus -->
+                            {{-- <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="visualizar_estatus" readonly>
+                                <label for="visualizar_estatus">Estatus</label>
+                            </div> --}}
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -141,11 +189,74 @@
             console.log('Usuario ID:', config.iduser, 'Tipo:', typeof config.iduser);
             console.log('Rol:', config.rol, 'Tipo:', typeof config.rol);
 
-            // Inicializar modal de Bootstrap
+            // Inicializar modales de Bootstrap
             var myModal = new bootstrap.Modal(document.getElementById('myModal'));
+            var modalVisualizar = new bootstrap.Modal(document.getElementById('modalVisualizar'));
             let frm = document.getElementById('formulario');
             var eliminar = document.getElementById('btnEliminar');
             var autorizar = document.getElementById('btnAutorizar');
+
+            // ========== FUNCIONES AUXILIARES ==========
+
+            // Función para formatear fecha
+            function formatearFecha(fechaStr) {
+                if (!fechaStr) return 'No especificada';
+                try {
+                    const fecha = new Date(fechaStr);
+                    return fecha.toLocaleDateString('es-MX', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                } catch (e) {
+                    return fechaStr;
+                }
+            }
+
+            // Función para obtener texto del estatus, aqui checarlo por que no se actualiza bien
+            // function obtenerTextoEstatus(estatus) {
+            //     switch(parseInt(estatus)) {
+            //         case 1: return 'Autorizado';
+            //         case 2: return 'Rechazado';
+            //         case 3: return 'Pendiente';
+            //         default: return 'Registrado';
+            //     }
+            // }
+
+            // Función para mostrar el modal de visualización para otros usuarios
+            function mostrarModalVisualizacion(evento) {
+                const extendedProps = evento.extendedProps || {};
+
+                // Obtener datos del evento
+                const nombreUsuario = extendedProps.nombre_usuario || 'No disponible';
+                const asunto = extendedProps.asunto || 'Sin asunto especificado';
+                // const estatus = extendedProps.estatus || 0;
+
+                // Obtener fechas
+                let fechaInicio = evento.startStr ? evento.startStr.split('T')[0] : null;
+                let fechaFin = null;
+
+                if (evento.endStr) {
+                    const fechaFinDate = new Date(evento.endStr);
+                    fechaFinDate.setDate(fechaFinDate.getDate() - 1);
+                    fechaFin = fechaFinDate.toISOString().split('T')[0];
+                } else {
+                    fechaFin = fechaInicio;
+                }
+
+                // Llenar los campos del modal de visualización
+                document.getElementById('visualizar_nombre_user').value = nombreUsuario;
+                document.getElementById('visualizar_asunto').value = asunto;
+                document.getElementById('visualizar_fechain').value = formatearFecha(fechaInicio);
+                document.getElementById('visualizar_fechafin').value = formatearFecha(fechaFin);
+                // document.getElementById('visualizar_estatus').value = obtenerTextoEstatus(estatus);
+
+                // Mostrar el modal
+                modalVisualizar.show();
+            }
+
+            // ========== CALENDARIO ==========
 
             // Inicializar calendario
             var calendarEl = document.getElementById('calendar');
@@ -179,7 +290,7 @@
                     document.getElementById('fechafin').value = info.dateStr;
 
                     // Configurar título y botón
-                    document.getElementById('titulo').textContent = 'Registro de Vacaciones';
+                    document.getElementById('titulo').textContent = 'Registro de Evento';
                     document.getElementById('btnAccion').textContent = 'Registrar';
                     document.getElementById('btnAccion').classList.remove('d-none');
 
@@ -190,6 +301,9 @@
                         // Si es admin, limpiar el campo
                         document.getElementById('nombre_user').value = '';
                     }
+
+                    // Limpiar asunto
+                    document.getElementById('asunto').value = '';
 
                     // Mostrar modal
                     myModal.show();
@@ -209,7 +323,7 @@
 
                     // Verificar permisos
                     if (iduserActual === iduserCreador || config.rol === 1) {
-                        console.log('PERMITIDO: Usuario puede editar');
+                        console.log('PERMITIDO: Usuario puede editar - Mostrar modal de edición');
 
                         // Mostrar botones según permisos
                         document.getElementById('btnEliminar').classList.remove('d-none');
@@ -217,17 +331,12 @@
                             autorizar.classList.remove('d-none');
                         }
 
-                        // Configurar formulario con datos del evento
-                        document.getElementById('titulo').textContent = 'Modificar Vacaciones';
+                        document.getElementById('titulo').textContent = 'Modificar Evento';
                         document.getElementById('id').value = info.event.id;
-
-                        // Obtener nombre del evento (eliminando la parte de "Creado el")
-                        var eventTitle = info.event.title || '';
-                        var nombreUsuario = eventTitle.split(' - Creado el')[0] || '';
-                        document.getElementById('nombre_user').value = nombreUsuario;
-
-                        // Obtener asunto desde extendedProps
-                        document.getElementById('asunto').value = info.event.extendedProps.asunto || '';
+                        document.getElementById('nombre_user').value = info.event.extendedProps
+                            .nombre_usuario || '';
+                        document.getElementById('asunto').value = info.event.extendedProps.asunto ||
+                        ''; // Obtener asunto desde extendedProps
 
                         // Formatear fechas
                         var fechaInicio = info.event.startStr.split('T')[0];
@@ -245,25 +354,22 @@
                         document.getElementById('fechain').value = fechaInicio;
                         document.getElementById('fechafin').value = fechaFin;
 
-                        // Configurar botón según estatus
                         var estatus = parseInt(info.event.extendedProps.estatus);
-                        if (estatus === 1) { // Autorizado
+                        if (estatus === 1) {
                             document.getElementById('btnAccion').classList.add('d-none');
                         } else {
                             document.getElementById('btnAccion').classList.remove('d-none');
                             document.getElementById('btnAccion').textContent = 'Modificar';
                         }
 
-                        // Mostrar modal
                         myModal.show();
+
                     } else {
-                        console.log('DENEGADO: Usuario NO puede editar');
-                        Swal.fire({
-                            title: 'Error',
-                            text: 'No tienes permiso para modificar o borrar este evento.',
-                            icon: 'error',
-                            confirmButtonText: 'Aceptar'
-                        });
+                        console.log(
+                            'DENEGADO: Usuario NO puede editar - Mostrar modal de visualización');
+
+                        // Mostrar modal de solo lectura (visualización)
+                        mostrarModalVisualizacion(info.event);
                     }
                 },
 
@@ -273,9 +379,12 @@
                         html: '<div class="m-2"><b>' +arg.event.extendedProps.asunto + ' - ' + arg.event.title +  '</b></div>',
                     };
                 }
+
             });
 
             calendar.render();
+
+            // ========== FUNCIONES DE FORMULARIO ==========
 
             // Función para registrar o modificar
             function realizarRegistroOModificacion() {
@@ -289,6 +398,7 @@
                 console.log('Enviando datos:', {
                     id: document.getElementById('id').value,
                     nombre_user: document.getElementById('nombre_user').value,
+                    asunto: document.getElementById('asunto').value,
                     fechain: document.getElementById('fechain').value,
                     fechafin: document.getElementById('fechafin').value,
                     iduserev: config.rol === 2 ? config.iduser : ''
@@ -403,7 +513,7 @@
                     myModal.hide();
 
                     swalWithBootstrapButtons.fire({
-                        title: "¿Autorizar vacaciones?",
+                        title: "¿Autorizar Evento?",
                         text: "No podrás revertir esto",
                         icon: "warning",
                         showCancelButton: true,

@@ -264,7 +264,6 @@ class EventosController extends Controller
     }
 
     // Listar Calendario
-
     public function listar()
     {
         $user = auth()->user();
