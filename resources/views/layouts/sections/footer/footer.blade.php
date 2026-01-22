@@ -6,7 +6,7 @@
         document.write(new Date().getFullYear())
 
       </script>
-       Tecnologias de la Información
+       Tecnologías de la Información
     </div>
     
   </div>

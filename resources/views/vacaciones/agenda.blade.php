@@ -57,33 +57,42 @@
                 <p>Usuario ID: {{ $iduser }} | Rol: {{ $rol }} | Nombre: {{ $sam }}</p>
             </div>
 
-            <!-- Modal para registrar/modificar vacaciones -->
+            <!-- Modal para agenda (CON asunto) -->
             <div class="modal fade" id="myModal" data-backdrop="static" data-keyboard="false" tabindex="-1"
                 aria-labelledby="myModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-simple modal-add-new-cc">
                     <div class="modal-content">
                         <div class="modal-header bg-secondary">
-                            <h5 class="modal-title text-white" id="titulo">Registro de Vacaciones</h5>
+                            <h5 class="modal-title text-white" id="titulo">Registro en Agenda</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
 
                         <form id="formulario" action="">
                             @csrf
+                            <input type="hidden" name="desde_agenda" value="1"> <!-- Para identificar que viene de agenda -->
+
                             <div class="modal-body">
                                 <input type="hidden" id="id" name="id">
 
+                                <!-- Nombre usuario -->
                                 <div class="form-floating mb-3">
                                     @if ($rol == 2)
-                                        <!-- Si es usuario normal -->
                                         <input type="text" class="form-control" id="nombre_user" name="nombre_user"
                                             value="{{ $ldapName }}" readonly>
                                         <label for="nombre_user">Usuario</label>
                                     @else
-                                        <!-- Si es admin -->
                                         <input type="text" class="form-control" id="nombre_user" name="nombre_user"
                                             value="" required>
                                         <label for="nombre_user">Nombre del Usuario</label>
                                     @endif
+                                </div>
+
+                                <!-- NUEVO: Campo asunto (OPCIONAl/Obligatorio?) solo en agenda -->
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="asunto" name="asunto"
+                                        placeholder="Ej: Reunión de equipo, Cita médica, etc." required>
+                                    <label for="asunto">Asunto *</label>
+                                    {{-- <small class="text-muted">Este texto aparecerá en la agenda</small> --}}
                                 </div>
 
                                 <div class="form-floating mb-3">
@@ -103,7 +112,6 @@
                                 <button class="btn btn-primary" id="btnAccion" type="submit">Registrar</button>
 
                                 @if ($rol != 2)
-                                    <!-- Solo admin puede autorizar -->
                                     <a class="btn btn-success text-white d-none" id="btnAutorizar"
                                         name="btnAutorizar">Autorizar</a>
                                 @endif
@@ -218,6 +226,9 @@
                         var nombreUsuario = eventTitle.split(' - Creado el')[0] || '';
                         document.getElementById('nombre_user').value = nombreUsuario;
 
+                        // Obtener asunto desde extendedProps
+                        document.getElementById('asunto').value = info.event.extendedProps.asunto || '';
+
                         // Formatear fechas
                         var fechaInicio = info.event.startStr.split('T')[0];
                         var fechaFin = '';
@@ -256,9 +267,10 @@
                     }
                 },
 
+                // Muestra cada evento en el calendario, primero el asunto y luego el nombre del usuario
                 eventContent: function(arg) {
                     return {
-                        html: '<div class="m-2"><b>' + arg.event.title + '</b></div>',
+                        html: '<div class="m-2"><b>' +arg.event.extendedProps.asunto + ' - ' + arg.event.title +  '</b></div>',
                     };
                 }
             });
@@ -323,7 +335,7 @@
             // Evento para eliminar
             eliminar.onclick = function() {
                 const idEvento = document.getElementById('id').value;
-                
+
                 // Cerrar primero el modal de Bootstrap
                 myModal.hide();
 

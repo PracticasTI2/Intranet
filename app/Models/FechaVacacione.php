@@ -40,6 +40,7 @@ class FechaVacacione extends Model
 
     protected $fillable = [
         'nombre_usuario',
+        'asunto',
         'fecha_inicio',
         'fecha_fin',
         'iduser',

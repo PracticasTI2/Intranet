@@ -100,15 +100,6 @@ class EventosController extends Controller
         // Para ldapName, puedes obtenerlo de user o crear uno
         $ldapName = $user->name ?? 'Usuario';
 
-        // // DEPURACIÓN: Agrega esto para verificar
-        // \Log::info('Datos del usuario en calendario', [
-        //     'user_id' => $user->id,
-        //     'user_name' => $user->name,
-        //     'user_email' => $user->email,
-        //     'iduser_pasado' => $iduser,
-        //     'rol_pasado' => $rol
-        // ]);
-
         return view('vacaciones.calendario', compact('sam', 'ldapName', 'rol', 'iduser'));
     }
 
@@ -126,7 +117,7 @@ class EventosController extends Controller
 
         $sam = $user->name;
 
-        // Para ldapName, puedes obtenerlo de user o crear uno
+        // Para ldapName, obtenerlo de user o crear uno
         $ldapName = $user->name ?? 'Usuario';
 
         return view('vacaciones.agenda', compact('sam', 'ldapName', 'rol', 'iduser'));
@@ -134,9 +125,11 @@ class EventosController extends Controller
 
     public function registrar(Request $request)
     {
+        // Determinar desde qué vista viene la solicitud
+        $esDesdeAgenda = $request->has('desde_agenda') || str_contains($request->header('referer'), '/agenda');
 
         $nombreuser = $request->input('nombre_user');
-
+        $asunto = $request->input('asunto'); // Opcional
         $fechain = $request->input('fechain');
         $fechafin = $request->input('fechafin');
         $id = $request->input('id');
@@ -162,6 +155,7 @@ class EventosController extends Controller
             // Si no existe, crea un nuevo evento
             $evento = new FechaVacacione();
             $evento->nombre_usuario = $nombreuser;
+            $evento->asunto = $asunto; // Guardar asunto (puede ser null)
             $evento->fecha_inicio = $fechain;
             $evento->fecha_fin = $fechafin;
 
@@ -180,6 +174,9 @@ class EventosController extends Controller
 
             return response()->json(['msg' => 'Evento agregado', 'tipo' => 'success']);
         }
+
+        // Modificar evento existente
+        $eventoExistente->asunto = $asunto; // Actualizar asunto (puede ser null)
 
         // Verifica si las fechas han cambiado
         if ($eventoExistente->fecha_inicio != $fechain || $eventoExistente->fecha_fin != $fechafin) {
@@ -236,6 +233,14 @@ class EventosController extends Controller
                     ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
                     : $evento->nombre_usuario;
 
+                // En agenda: Si hay asunto, mostrarlo. Si no, mostrar nombre.
+                $titulo = $evento->asunto ?: $nombreUsuario;
+
+                // Opcional: agregar nombre entre paréntesis si hay asunto
+                if ($evento->asunto) {
+                    $titulo .= " ($nombreUsuario)";
+                }
+
                 return [
                     'id' => $evento->id,
                     'title' => $nombreUsuario,
@@ -248,6 +253,7 @@ class EventosController extends Controller
                     'allDay' => true,
                     'extendedProps' => [
                         'nombre_usuario' => $nombreUsuario, // Nombre limpio
+                        'asunto' => $evento->asunto, // Incluir asunto
                         'iduser' => $evento->iduser,
                         'estatus' => $evento->estatus,
                     ]
