@@ -162,12 +162,12 @@ class EventosController extends Controller
 
             $evento->iduser = $iduser;
 
-            $evento->estatus = 3;
+            $evento->estatus = 3;  // Siempre como pendiente para nuevos eventos
 
             if ($iduser2 === 11) {
-                $evento->color = '#1465bb';
+                $evento->color = '#1465bb'; // Color azul
             } else {
-                $evento->color = '#808080';
+                $evento->color = '#808080'; // Gris para pendiente
             }
 
             $evento->save();

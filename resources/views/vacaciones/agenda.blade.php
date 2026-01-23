@@ -77,8 +77,8 @@
                                 <!-- Nombre usuario -->
                                 <div class="form-floating mb-3">
                                     @if ($rol == 2)
-                                        <input type="text" class="form-control" id="nombre_user" name="nombre_user"
-                                            value="{{ $ldapName }}" readonly>
+                                        <input type="text" class="form-control pe-none" id="nombre_user"
+                                            name="nombre_user" value="{{ $ldapName }}" readonly>
                                         <label for="nombre_user">Usuario</label>
                                     @else
                                         <input type="text" class="form-control" id="nombre_user" name="nombre_user"
@@ -94,7 +94,7 @@
                                     <label for="asunto">Asunto *</label>
                                 </div>
 
-                                <div class="form-floating mb-3">
+                                {{-- <div class="form-floating mb-3">
                                     <input type="date" class="form-control" id="fechain" name="fechain">
                                     <label for="fechain">Fecha de Inicio</label>
                                 </div>
@@ -102,12 +102,33 @@
                                 <div class="form-floating mb-3">
                                     <input type="date" class="form-control" id="fechafin" name="fechafin">
                                     <label for="fechafin">Fecha Final</label>
+                                </div> --}}
+
+                                <div class="form-floating mb-3">
+                                    <input type="date" class="form-control" id="fechain" name="fechain"
+                                        min="{{ date('Y-m-d') }}">
+                                    <label for="fechain">Fecha de Inicio *</label>
+                                    <div class="invalid-feedback" id="fechain-error">
+                                        No se pueden seleccionar fechas anteriores a hoy.
+                                    </div>
                                 </div>
+
+                                <div class="form-floating mb-3">
+                                    <input type="date" class="form-control" id="fechafin" name="fechafin"
+                                        min="{{ date('Y-m-d') }}">
+                                    <label for="fechafin">Fecha Final *</label>
+                                    <div class="invalid-feedback" id="fechafin-error">
+                                        No se pueden seleccionar fechas anteriores a hoy.
+                                    </div>
+                                </div>
+
+
                             </div>
+
 
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <a class="btn btn-danger text-white d-none" id="btnEliminar" name="btnEliminar">Eliminar</a>
+                                <a class="btn btn-danger text-white d-none" id="btnEliminar" name="btnEliminar" style="background-color: #d33;">Eliminar</a>
                                 <button class="btn btn-primary" id="btnAccion" type="submit">Registrar</button>
 
                                 @if ($rol != 2)
@@ -134,7 +155,7 @@
                         <div class="modal-body">
                             <!-- Información del usuario -->
                             <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="visualizar_nombre_user" readonly>
+                                <input type="text" class="form-control pe-none" id="visualizar_nombre_user" readonly>
                                 <label for="visualizar_nombre_user">Usuario</label>
                             </div>
 
@@ -189,7 +210,7 @@
             console.log('Usuario ID:', config.iduser, 'Tipo:', typeof config.iduser);
             console.log('Rol:', config.rol, 'Tipo:', typeof config.rol);
 
-            // Inicializar modales de Bootstrap
+            // Inicializar modals de Bootstrap
             var myModal = new bootstrap.Modal(document.getElementById('myModal'));
             var modalVisualizar = new bootstrap.Modal(document.getElementById('modalVisualizar'));
             let frm = document.getElementById('formulario');
@@ -256,6 +277,11 @@
                 modalVisualizar.show();
             }
 
+            // Establecer fecha mínima en los inputs al cargar la página
+            const fechaActual = obtenerFechaActual();
+            document.getElementById('fechain').min = fechaActual;
+            document.getElementById('fechafin').min = fechaActual;
+
             // ========== CALENDARIO ==========
 
             // Inicializar calendario
@@ -274,6 +300,20 @@
                 // Al hacer clic en una fecha
                 dateClick: function(info) {
                     console.log('Clic en fecha:', info.dateStr);
+
+                    const fechaClic = info.dateStr;
+                    const fechaActual = obtenerFechaActual();
+
+                    // Validar que la fecha no sea anterior a hoy
+                    if (fechaClic < fechaActual) {
+                        Swal.fire({
+                            title: 'Fecha no válida',
+                            text: 'No puedes seleccionar fechas pasadas. Por favor, selecciona una fecha de hoy en adelante.',
+                            icon: 'warning',
+                            confirmButtonText: 'Aceptar'
+                        });
+                        return; // No abrir el modal
+                    }
 
                     // Resetear formulario
                     frm.reset();
@@ -336,7 +376,7 @@
                         document.getElementById('nombre_user').value = info.event.extendedProps
                             .nombre_usuario || '';
                         document.getElementById('asunto').value = info.event.extendedProps.asunto ||
-                        ''; // Obtener asunto desde extendedProps
+                            ''; // Obtener asunto desde extendedProps
 
                         // Formatear fechas
                         var fechaInicio = info.event.startStr.split('T')[0];
@@ -376,13 +416,97 @@
                 // Muestra cada evento en el calendario, primero el asunto y luego el nombre del usuario
                 eventContent: function(arg) {
                     return {
-                        html: '<div class="m-2"><b>' +arg.event.extendedProps.asunto + ' - ' + arg.event.title +  '</b></div>',
+                        html: '<div class="m-2"><b>' + arg.event.extendedProps.asunto + ' - ' + arg
+                            .event.title + '</b></div>',
                     };
                 }
 
             });
 
+            // ========== EVENT LISTENERS PARA VALIDACIÓN EN TIEMPO REAL ==========
+
+            // Validar fecha de inicio mientras se escribe/selecciona
+            document.getElementById('fechain').addEventListener('change', function() {
+                validarFechaNoPasada(this.value, 'fechain');
+
+                // Si fecha fin es anterior a la nueva fecha inicio, actualizar
+                const fechaFin = document.getElementById('fechafin').value;
+                if (fechaFin && fechaFin < this.value) {
+                    document.getElementById('fechafin').value = this.value;
+                }
+
+                // Actualizar min de fecha fin
+                document.getElementById('fechafin').min = this.value;
+            });
+
+            // Validar fecha final mientras se escribe/selecciona
+            document.getElementById('fechafin').addEventListener('change', function() {
+                validarFechaNoPasada(this.value, 'fechafin');
+                validarRangoFechas(
+                    document.getElementById('fechain').value,
+                    this.value
+                );
+            });
+
+
             calendar.render();
+
+            // ========== FUNCIONES DE VALIDACIÓN DE FECHAS ==========
+
+            // Función para obtener la fecha actual en formato YYYY-MM-DD
+            function obtenerFechaActual() {
+                const hoy = new Date();
+                const año = hoy.getFullYear();
+                const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+                const dia = String(hoy.getDate()).padStart(2, '0');
+                return `${año}-${mes}-${dia}`;
+            }
+
+            // Función para validar que la fecha no sea anterior a hoy
+            function validarFechaNoPasada(fecha, campoId) {
+                const fechaActual = obtenerFechaActual();
+                const inputCampo = document.getElementById(campoId);
+
+                if (fecha < fechaActual) {
+                    inputCampo.classList.add('is-invalid');
+                    return false;
+                } else {
+                    inputCampo.classList.remove('is-invalid');
+                    return true;
+                }
+            }
+
+            // Función para validar que fecha fin no sea menor que fecha inicio
+            function validarRangoFechas(fechaInicio, fechaFin) {
+                const inputFin = document.getElementById('fechafin');
+
+                if (fechaFin < fechaInicio) {
+                    inputFin.classList.add('is-invalid');
+                    document.getElementById('fechafin-error').textContent =
+                        'La fecha final no puede ser anterior a la fecha de inicio.';
+                    return false;
+                } else {
+                    inputFin.classList.remove('is-invalid');
+                    return true;
+                }
+            }
+
+            // Función para validar todo el formulario
+            function validarFormulario() {
+                const fechaInicio = document.getElementById('fechain').value;
+                const fechaFin = document.getElementById('fechafin').value;
+
+                // Validar fecha de inicio
+                const inicioValido = validarFechaNoPasada(fechaInicio, 'fechain');
+
+                // Validar fecha final
+                const finValida = validarFechaNoPasada(fechaFin, 'fechafin');
+
+                // Validar rango
+                const rangoValido = validarRangoFechas(fechaInicio, fechaFin);
+
+                return inicioValido && finValida && rangoValido;
+            }
 
             // ========== FUNCIONES DE FORMULARIO ==========
 
@@ -601,8 +725,27 @@
             }
 
             // Evento submit del formulario
+            // frm.addEventListener('submit', function(e) {
+            //     e.preventDefault();
+            //     console.log('Formulario enviado');
+            //     realizarRegistroOModificacion();
+            // });
+
+            // Evento submit del formulario
             frm.addEventListener('submit', function(e) {
                 e.preventDefault();
+
+                // Validar fechas antes de enviar
+                if (!validarFormulario()) {
+                    Swal.fire({
+                        title: 'Error en fechas',
+                        text: 'Por favor, corrige los errores en las fechas antes de continuar.',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar'
+                    });
+                    return;
+                }
+
                 console.log('Formulario enviado');
                 realizarRegistroOModificacion();
             });
