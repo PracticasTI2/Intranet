@@ -138,12 +138,12 @@ class EventosController extends Controller
         $iduser2 = intval($request->input('iduserev'));
 
         // Verifica si ya existe un evento en la fecha seleccionada
-        $eventosExistente = FechaVacacione::where('fecha_inicio', '<=', $fechafin)
-            ->where('fecha_fin', '>=', $fechain)
-            ->where('id', '!=', $id)
-            ->count();
+        // $eventoExistente = FechaVacacione::where('fecha_inicio', '<=', $fechafin)
+        //     ->where('fecha_fin', '>=', $fechain)
+        //     ->where('id', '!=', $id)
+        //     ->count();
 
-        // if ($eventosExistente > 0) {
+        // if ($eventoExistente > 0) {
         //     return response()->json(['msg' => 'Fecha ocupada', 'tipo' => 'warning']);
         // }
 
