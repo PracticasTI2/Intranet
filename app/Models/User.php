@@ -86,7 +86,7 @@ class User extends Authenticatable implements LdapAuthenticatable
 
 	public function datoUsuario()
 	{
-		return $this->hasOne(DatoUsuario::class, 'user_id');
+		return $this->hasOne(DatoUsuario::class, 'user_id', 'id');
 	}
 
 	public function getAuthIdentifierName()

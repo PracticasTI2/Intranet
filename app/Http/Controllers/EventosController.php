@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-
 use App\Models\User;
 use App\Models\FechaVacacione;
+use App\Models\VacacionesAcumulada;
+use App\Models\DatoUsuario;
+
+use Carbon\Carbon;
+
+use Illuminate\Support\Facades\Auth;
 
 
 use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 //use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Support\Facades\Auth;
 //use Spatie\Permission\Models\Role;
 use Hash;
 use Illuminate\Support\Arr;
@@ -30,54 +34,6 @@ class EventosController extends Controller
 
 
 
-
-    // public function index()
-    // {
-    //     $user = Auth::user();
-    //     $iduser = Auth::user()->id;
-
-    //     // $rol = $user->roles->pluck('name')->all();
-    //     $rol = 1;
-
-
-    //     //     $rol = User::where('email', $user->samaccountname[0])
-    //     //         ->join('model_has_roles', 'model_has_roles.model_id', '=', 'user.id')
-    //     //         ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
-    //     //         ->pluck('model_has_roles.role_id')
-    //     //         ->first();
-
-    //     //         $usuarioLogueadoId = Auth::user()->id;
-    //     //         $userRole = $usuarioLogueadoId->roles->pluck('id')->all();
-    //     // dd($userRole);
-    //     // $iduser = User::where('email', $user->samaccountname[0])
-    //     // ->pluck('user.id')
-    //     // ->first();
-
-    //     $eventos = FechaVacacione::orderBy('created_at', 'asc')->get();
-    //     // $userRole = $user->roles();
-    //     $sam = $user->name;
-
-    //     if (isset($user->cn) && count($user->cn) > 0) {
-    //         // Accede al primer valor del array "cn"
-    //         $ldapName = $sam;
-    //     } else {
-    //         // Si no hay un valor "cn", establece un valor predeterminado o maneja la situación según sea necesario
-    //         $ldapName = 'Nombre por defecto';
-    //     }
-
-    //     return view('vacaciones.index', compact('eventos', 'ldapName', 'sam', 'user', 'rol', 'iduser'));
-    // }
-
-    // public function index()
-    // {
-    //     $user = auth()->user();
-
-    //     return view('vacaciones.index', compact('user'));
-    //     // return view('vacaciones.index');
-
-    // }
-
-
     public function indexCalendario()
     {
         $user = auth()->user();
@@ -85,22 +41,55 @@ class EventosController extends Controller
         // El iduser es el ID de la tabla users (Laravel)
         $iduser = $user->id;
 
-        // Define el rol (temporalmente hasta configurar Spatie)
-        // Si tienes Spatie instalado:
-        // $rol = $user->hasRole('admin') ? 1 : 2;
+        // Define el rol
         $rol = $user->role_id ?? 2; //
-
-        // Si no tienes Spatie, puedes usar esto temporalmente:
-        // $rol = $user->role_id ?? 2; // Si tienes un campo role_id en users
-        // O si no:
-        // $rol = 2; // Por defecto usuario normal
 
         $sam = $user->name;
 
         // Para ldapName, puedes obtenerlo de user o crear uno
         $ldapName = $user->name ?? 'Usuario';
 
-        return view('vacaciones.calendario', compact('sam', 'ldapName', 'rol', 'iduser'));
+        // Construir el resumen completo de vacaciones
+        // $resumenVacaciones = $this->calcularResumenVacaciones($iduser);
+
+
+        $resumenVacaciones = [
+            'usuario' => $user->name . ' ' . ($user->apaterno ?? ''),
+            'fecha_ingreso' => $user->fecha_ingreso ?? '2023-01-15', // Debería de tener este campo en el modelo DatoUsuario
+            'antiguedad_anios' => 2, // Calcular esto automáticamente
+            'antiguedad_meses' => 3,
+
+            'anio_actual' => [
+                'dias_totales' => 12,
+                'dias_tomados' => 3,
+                'dias_pendientes' => 9
+            ],
+
+            'historico' => [
+                '2023' => [
+                    'antiguedad_anios' => 1,
+                    'dias_totales' => 12,
+                    'dias_tomados' => 6,
+                    'dias_pendientes' => 6
+                ],
+                '2024' => [
+                    'antiguedad_anios' => 2,
+                    'dias_totales' => 12,
+                    'dias_tomados' => 3,
+                    'dias_pendientes' => 9
+                ]
+            ],
+
+            'total_general' => [
+                'dias_totales' => 24,
+                'dias_tomados' => 9,
+                'dias_pendientes' => 15
+            ]
+        ];
+
+
+
+        return view('vacaciones.calendario', compact('sam', 'ldapName', 'rol', 'iduser', 'resumenVacaciones'));
     }
 
     public function indexAgenda()
@@ -353,26 +342,10 @@ class EventosController extends Controller
         }
     }
 
-    // public function drag()
-    // {
-    //     if (isset($_POST)) {
-    //         if (empty($_POST['id']) || empty($_POST['start'])) {
-    //             $msg = array('msg' => 'Todo los campos son requeridos', 'estado' => false, 'tipo' => 'danger');
-    //         } else {
-    //             $start = $_POST['start'];
-    //             $id = $_POST['id'];
-    //             $data = $this->model->dragOver($start, $id);
-    //             if ($data == 'ok') {
-    //                 $msg = array('msg' => 'Evento Modificado', 'estado' => true, 'tipo' => 'success');
-    //             } else {
-    //                 $msg = array('msg' => 'Error al Modificar', 'estado' => false, 'tipo' => 'danger');
-    //             }
-    //         }
-    //         echo json_encode($msg);
-    //     }
-    //     die();
-    // }
+    // ==================== MÉTODOS PARA RESUMEN DE VACACIONES ====================
 
+
+    // ==================== DISPONIBILIDAD ====================
 
 
     public function verificarDisponibilidad(Request $request)
@@ -395,6 +368,7 @@ class EventosController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
     /**
      * Show the form for creating a new resource.
      *

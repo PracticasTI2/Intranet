@@ -45,6 +45,113 @@
                 </div>
             </div>
 
+            <!-- Resumen de Vacaciones -->
+            @isset($resumenVacaciones)
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Resumen de vacaciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Información del Empleado -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Información del empleado:</strong>
+                                    <div class="mt-2">
+                                        @isset($resumenVacaciones['fecha_ingreso'])
+                                            <div><small>Fecha de Ingreso:</small>
+                                                <strong>{{ \Carbon\Carbon::parse($resumenVacaciones['fecha_ingreso'])->format('d/m/Y') }}</strong>
+                                            </div>
+                                        @endisset
+                                        @if (isset($resumenVacaciones['antiguedad_anios']) || isset($resumenVacaciones['antiguedad_meses']))
+                                            <div><small>Antigüedad:</small>
+                                                <strong>
+                                                    {{ $resumenVacaciones['antiguedad_anios'] ?? 0 }} años,
+                                                    {{ $resumenVacaciones['antiguedad_meses'] ?? 0 }} meses
+                                                </strong>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Año Actual -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Año {{ date('Y') }}:</strong>
+                                    <div class="mt-2">
+                                        @if (isset($resumenVacaciones['anio_actual']))
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Días correspondientes:</span>
+                                                <span class="badge bg-primary">
+                                                    {{ $resumenVacaciones['anio_actual']['dias_totales'] ?? 0 }} días
+                                                </span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Días tomados:</span>
+                                                <span class="badge bg-warning">
+                                                    {{ $resumenVacaciones['anio_actual']['dias_tomados'] ?? 0 }} días
+                                                </span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Días pendientes:</span>
+                                                <span class="badge bg-success">
+                                                    {{ $resumenVacaciones['anio_actual']['dias_pendientes'] ?? 0 }} días
+                                                </span>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-info py-2 my-1">
+                                                <small>No hay información para el año actual</small>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Progreso -->
+                        @if (isset($resumenVacaciones['anio_actual']['dias_totales']) && $resumenVacaciones['anio_actual']['dias_totales'] > 0)
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>Progreso del año</small>
+                                    <small>
+                                        {{ $resumenVacaciones['anio_actual']['dias_tomados'] }} de
+                                        {{ $resumenVacaciones['anio_actual']['dias_totales'] }} días
+                                    </small>
+                                </div>
+                                <div class="progress" style="height: 20px;">
+                                    @php
+                                        $porcentaje = 0;
+                                        if ($resumenVacaciones['anio_actual']['dias_totales'] > 0) {
+                                            $porcentaje =
+                                                ($resumenVacaciones['anio_actual']['dias_tomados'] /
+                                                    $resumenVacaciones['anio_actual']['dias_totales']) *
+                                                100;
+                                        }
+                                    @endphp
+                                    <div class="progress-bar bg-warning" role="progressbar"
+                                        style="width: {{ $porcentaje }}%; " aria-valuenow="{{ $porcentaje }}"
+                                        aria-valuemin="0" aria-valuemax="100">
+                                        {{ number_format($porcentaje, 1) }}%
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @else
+                <!-- Mensaje cuando no hay datos -->
+                <div class="card mb-4 border-warning">
+                    <div class="card-body text-center py-4">
+                        <i class="fas fa-calendar-times fa-2x text-warning mb-3"></i>
+                        <h5 class="card-title">No hay información de vacaciones disponible</h5>
+                        <p class="card-text text-muted">
+                            La información de resumen de vacaciones no está configurada.
+                        </p>
+                    </div>
+                </div>
+            @endisset
+
             <!-- Tarjeta principal con calendario -->
             <div class="card">
                 <div class="card-body">
@@ -109,7 +216,8 @@
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-secondary"
+                                    data-bs-dismiss="modal">Cancelar</button>
                                 <a class="btn btn-danger text-white d-none" id="btnEliminar" name="btnEliminar"
                                     style="background-color: #d33;">Eliminar</a>
                                 <button class="btn btn-primary" id="btnAccion" type="submit">Registrar</button>
@@ -324,6 +432,76 @@
             });
 
             calendar.render();
+
+            // ========== RESUMEN VACACIONES  ==========
+
+            function actualizarResumenVacaciones() {
+                const hoy = new Date();
+                const anioActual = hoy.getFullYear();
+
+                // Calcular días tomados este año
+                const eventos = calendar.getEvents();
+                let diasTomados = 0;
+
+                eventos.forEach(evento => {
+                    const inicio = evento.start;
+                    const fin = evento.end ? new Date(evento.end.getTime() - 86400000) : evento
+                    .start; // Restar 1 día
+
+                    if (inicio.getFullYear() === anioActual || fin.getFullYear() === anioActual) {
+                        // Contar días hábiles
+                        diasTomados += contarDiasHabiles(inicio, fin);
+                    }
+                });
+
+                // Actualizar UI
+                document.getElementById('dias-tomados-actual').textContent = diasTomados;
+
+                // Si tienes los días totales desde PHP, calcular pendientes
+                const diasTotales = parseInt(document.getElementById('dias-totales-actual').dataset.dias) || 0;
+                const diasPendientes = Math.max(0, diasTotales - diasTomados);
+
+                document.getElementById('dias-pendientes-actual').textContent = diasPendientes;
+
+                // Actualizar barra de progreso
+                const porcentaje = diasTotales > 0 ? (diasTomados / diasTotales) * 100 : 0;
+                document.getElementById('barra-progreso-vacaciones').style.width = `${porcentaje}%`;
+                document.getElementById('porcentaje-vacaciones').textContent = `${porcentaje.toFixed(1)}%`;
+            }
+
+            // Función para contar días hábiles (excluye fines de semana)
+            function contarDiasHabiles(inicio, fin) {
+                let dias = 0;
+                const fechaActual = new Date(inicio);
+
+                while (fechaActual <= fin) {
+                    const diaSemana = fechaActual.getDay();
+                    if (diaSemana !== 0 && diaSemana !== 6) { // No sábado (6) ni domingo (0)
+                        dias++;
+                    }
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+
+                return dias;
+            }
+
+            // Actualizar al cargar y después de cada cambio
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(actualizarResumenVacaciones, 1000);
+
+                // Escuchar cambios en el calendario
+                calendar.on('eventChange', function() {
+                    setTimeout(actualizarResumenVacaciones, 500);
+                });
+
+                calendar.on('eventRemove', function() {
+                    setTimeout(actualizarResumenVacaciones, 500);
+                });
+
+                calendar.on('eventAdd', function() {
+                    setTimeout(actualizarResumenVacaciones, 500);
+                });
+            });
 
             // ========== FUNCIONES DE VALIDACIÓN DE FECHAS ==========
 
