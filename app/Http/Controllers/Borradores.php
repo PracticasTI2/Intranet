@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Log;
 
 class EventosController extends Controller
 {
-    // Método principal para mostrar el calendario con resumen
-
+    /**
+     * Método principal para mostrar el calendario con resumen
+     */
     public function indexCalendario()
     {
         $user = auth()->user();
@@ -29,15 +30,19 @@ class EventosController extends Controller
         return view('vacaciones.calendario', compact('sam', 'ldapName', 'rol', 'iduser', 'resumenVacaciones'));
     }
 
-    // ========== MÉTODOS PARA CÁLCULO DE VACACIONES ==========
+    /**
+     * ========== MÉTODOS PARA CÁLCULO DE VACACIONES ==========
+     */
 
-    // Calcular días de vacaciones según Artículo 76 LFT
+    /**
+     * Calcular días de vacaciones según Artículo 76 LFT
+     */
     private function calcularDiasVacacionesLFT($fechaIngreso, $anioCalcular = null): int
     {
         if (!$fechaIngreso) return 0;
 
         $ingreso = Carbon::parse($fechaIngreso);
-        $fechaReferencia = $anioCalcular ? Carbon::create($anioCalcular, 12, 31) : Carbon::now(); // ultimo día del año a calcular (12 = diciembre, 31 = día 31)
+        $fechaReferencia = $anioCalcular ? Carbon::create($anioCalcular, 12, 31) : Carbon::now();
 
         // Verificar si tiene al menos 6 meses trabajados
         $mesesTrabajados = $ingreso->diffInMonths($fechaReferencia, false);
@@ -50,7 +55,7 @@ class EventosController extends Controller
         if ($aniosCompletos < 1) return 12;
 
         // Tabla LFT
-        return match ($aniosCompletos) {
+        return match($aniosCompletos) {
             1 => 12,
             2 => 14,
             3 => 16,
@@ -136,36 +141,13 @@ class EventosController extends Controller
         return $totalDias;
     }
 
-    // ========== MÉTODOS PARA OBTENER RESUMEN ==========
+    /**
+     * ========== MÉTODOS PARA OBTENER RESUMEN ==========
+     */
 
-    // Obtener resumen de vacaciones (prioriza tabla acumulada)
-
-    // private function obtenerResumenVacaciones($userId): array
-    // {
-    //     try {
-    //         $datoUsuario = DatoUsuario::where('user_id', $userId)->first();
-    //         if (!$datoUsuario) return $this->estructuraResumenVacia();
-
-    //         $anioActual = date('Y');
-    //         $fechaIngreso = $datoUsuario->ingreso;
-    //         if (!$fechaIngreso) return $this->estructuraResumenVacia($datoUsuario);
-
-    //         // Intentar obtener de tabla acumulada
-    //         // $resumen = $this->obtenerDeTablaAcumulada($userId, $anioActual);
-
-    //         // Si no hay en tabla acumulada, calcular en tiempo real
-    //         // if (!$resumen) {
-    //         $resumen = $this->calcularResumenEnTiempoReal($userId, $datoUsuario, $anioActual);  // Calcular en tiempo real (primera vez)
-    //         $this->guardarEnTablaAcumulada($userId, $anioActual, $resumen);   // Guardar en tabla acumulada para futuras consultas
-    //         // }
-
-    //         return $resumen;
-    //     } catch (\Exception $e) {
-    //         Log::error('Error obteniendo resumen de vacaciones: ' . $e->getMessage());
-    //         return $this->estructuraResumenVacia();
-    //     }
-    // }
-
+    /**
+     * Obtener resumen de vacaciones (prioriza tabla acumulada)
+     */
     private function obtenerResumenVacaciones($userId): array
     {
         try {
@@ -176,15 +158,18 @@ class EventosController extends Controller
             $fechaIngreso = $datoUsuario->ingreso;
             if (!$fechaIngreso) return $this->estructuraResumenVacia($datoUsuario);
 
-            // Siempre calcular en tiempo real
-            $resumen = $this->calcularResumenEnTiempoReal($userId, $datoUsuario, $anioActual);
-
-            // Guardar en tabla acumulada
-            $this->guardarEnTablaAcumulada($userId, $anioActual, $resumen);
+            // Intentar obtener de tabla acumulada
+            $resumen = $this->obtenerDeTablaAcumulada($userId, $anioActual);
+            
+            // Si no hay en tabla acumulada, calcular en tiempo real
+            if (!$resumen) {
+                $resumen = $this->calcularResumenEnTiempoReal($userId, $datoUsuario, $anioActual);
+                $this->guardarEnTablaAcumulada($userId, $anioActual, $resumen);
+            }
 
             return $resumen;
         } catch (\Exception $e) {
-            Log::error('Error obteniendo resumen: ' . $e->getMessage());
+            Log::error('Error obteniendo resumen de vacaciones: ' . $e->getMessage());
             return $this->estructuraResumenVacia();
         }
     }
@@ -350,7 +335,7 @@ class EventosController extends Controller
      */
     private function estructuraResumenVacia($datoUsuario = null): array
     {
-        $nombre = $datoUsuario
+        $nombre = $datoUsuario 
             ? trim($datoUsuario->nombre . ' ' . ($datoUsuario->apaterno ?? '') . ' ' . ($datoUsuario->amaterno ?? ''))
             : 'Usuario';
 
@@ -426,13 +411,12 @@ class EventosController extends Controller
     public function registrar(Request $request)
     {
         $nombreuser = $request->input('nombre_user');
-        // $asunto = $request->input('asunto');
-        $asunto = $request->input('asunto', 'Vacaciones'); // vacaciones por defecto al no llenarse el campo de asunto para el caso de Calendario
+        $asunto = $request->input('asunto');
         $fechain = $request->input('fechain');
         $fechafin = $request->input('fechafin');
         $id = $request->input('id');
         $iduser = $request->input('iduserev');
-
+        
         // Buscar evento existente
         $eventoExistente = FechaVacacione::find($id);
 
@@ -445,10 +429,10 @@ class EventosController extends Controller
             $evento->fecha_fin = $fechafin;
             $evento->iduser = $iduser;
             $evento->estatus = 3; // Pendiente
-
+            
             // Asignar color según usuario específico
             $evento->color = (intval($iduser) === 11) ? '#1465bb' : '#808080';
-
+            
             $evento->save();
 
             return response()->json(['msg' => 'Solicitud de vacaciones registrada', 'tipo' => 'success']);
@@ -517,7 +501,7 @@ class EventosController extends Controller
                 $autorizacion->color = in_array($iduser, [153, 127, 157]) ? '#276621' : '#7ACC0E';
                 $msg = 'Solicitud autorizada';
                 $tipo = 'success';
-
+                
                 // Actualizar acumulados (se hará automáticamente por el evento del modelo)
             } else {
                 // Rechazar
@@ -528,7 +512,7 @@ class EventosController extends Controller
             }
 
             $autorizacion->save();
-
+            
             // Actualizar resumen en tabla acumulada
             $this->actualizarAcumuladosUsuario($iduser, date('Y'));
 
@@ -601,8 +585,9 @@ class EventosController extends Controller
         }
     }
 
-
-    // ========== MÉTODOS PARA AGENDA ==========
+    /**
+     * ========== MÉTODOS PARA AGENDA ==========
+     */
 
     public function indexAgenda()
     {
@@ -624,7 +609,7 @@ class EventosController extends Controller
                 $inicio = Carbon::parse($evento->fecha_inicio);
                 $fin = Carbon::parse($evento->fecha_fin)->addDay();
 
-                $nombre = $evento->datoUsuario
+                $nombre = $evento->datoUsuario 
                     ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
                     : $evento->nombre_usuario;
 
@@ -651,7 +636,9 @@ class EventosController extends Controller
         return response()->json($eventos);
     }
 
-    // ========== MÉTODOS CRUD BÁSICOS ==========
+    /**
+     * ========== MÉTODOS CRUD BÁSICOS ==========
+     */
 
     public function create()
     {
@@ -682,4 +669,51 @@ class EventosController extends Controller
     {
         // No implementado - se usa eliminarEvento()
     }
+}
+
+
+
+private function calcularDiasVacacionesLFT($fechaIngreso, $anioCalcular = null): int
+{
+    if (!$fechaIngreso) return 0;
+
+    $ingreso = Carbon::parse($fechaIngreso);
+    $fechaReferencia = $anioCalcular ? Carbon::create($anioCalcular, 12, 31) : Carbon::now();
+
+    // Verificar si tiene al menos 6 meses trabajados
+    $mesesTrabajados = $ingreso->diffInMonths($fechaReferencia, false);
+    if ($mesesTrabajados < 6) return 0;
+
+    // Calcular años completos trabajados
+    $aniosCompletos = $ingreso->diffInYears($fechaReferencia, false);
+    
+    // IMPORTANTE: La LFT considera "años de servicio", no "años calendario completos"
+    // Si tiene entre 6 meses y 1 año = 12 días
+    if ($aniosCompletos < 1) return 12;
+
+    // La tabla LFT empieza en 1 año = 12 días
+    // Pero nuestro $aniosCompletos ya es 1 cuando tiene 1 año completo
+    // Necesitamos ajustar la lógica:
+    
+    // Años según LFT vs años completos calculados:
+    // LFT Año 1 = nuestro $aniosCompletos = 0 (menos de 1 año) = 12 días
+    // LFT Año 2 = nuestro $aniosCompletos = 1 (1 año completo) = 12 días
+    // LFT Año 3 = nuestro $aniosCompletos = 2 (2 años completos) = 14 días
+    // LFT Año 4 = nuestro $aniosCompletos = 3 (3 años completos) = 16 días
+    
+    // Por lo tanto, debemos ajustar:
+    $aniosLFT = $aniosCompletos + 1;
+    
+    return match($aniosLFT) {
+        1, 2 => 12,       // Primer y segundo año: 12 días
+        3 => 14,          // Tercer año: 14 días
+        4 => 16,          // Cuarto año: 16 días
+        5 => 18,          // Quinto año: 18 días
+        6 => 20,          // Sexto año: 20 días
+        7, 8, 9, 10 => 22, // Años 7-10: 22 días
+        11, 12, 13, 14, 15 => 24, // Años 11-15: 24 días
+        16, 17, 18, 19, 20 => 26, // Años 16-20: 26 días
+        21 => 28,         // Año 21: 28 días
+        default => 28 + floor(($aniosLFT - 21) / 5) * 2 // +2 días cada 5 años después de 21
+    };
 }
