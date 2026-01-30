@@ -134,6 +134,8 @@ Route::post('/autorizar/{id}', $controller_path . '\EventosController@autorizar'
 // Agenda 
 Route::get('/vacaciones/agenda', $controller_path . '\EventosController@indexAgenda')->name('vacaciones-agenda')->middleware('auth');
 Route::get('/listarAgenda', $controller_path . '\EventosController@listarAgenda')->name('listarAgenda');
+Route::get('/dias-disponibles/{userId}', [EventosController::class, 'obtenerDiasDisponibles']);
+
 
 // Rutas de prueba
 

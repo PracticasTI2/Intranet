@@ -81,20 +81,6 @@ class EventosController extends Controller
     }
 
     /**
-     * Calcular antigüedad para un año específico
-     */
-    private function calcularAntiguedadParaAnio($userId, $anio): int
-    {
-        $datoUsuario = DatoUsuario::where('user_id', $userId)->first();
-        if (!$datoUsuario || !$datoUsuario->ingreso) return 0;
-
-        $ingreso = Carbon::parse($datoUsuario->ingreso);
-        $finAnio = Carbon::create($anio, 12, 31);
-
-        return max(0, $ingreso->diffInYears($finAnio, false));
-    }
-
-    /**
      * Calcular días hábiles entre dos fechas (sin fines de semana)
      */
     private function calcularDiasHabilesEntreFechas($inicio, $fin): int
@@ -162,36 +148,6 @@ class EventosController extends Controller
     }
 
     /**
-     * Obtener de tabla acumulada
-     */
-    private function obtenerDeTablaAcumulada($userId, $anioActual): ?array
-    {
-        $acumulada = VacacionesAcumulada::where('user_id', $userId)
-            ->where('anio', $anioActual)
-            ->first();
-
-        if (!$acumulada) return null;
-
-        $datoUsuario = DatoUsuario::where('user_id', $userId)->first();
-        $antiguedad = $this->calcularAntiguedad($datoUsuario->ingreso);
-
-        return [
-            'usuario' => trim($datoUsuario->nombre . ' ' . ($datoUsuario->apaterno ?? '') . ' ' . ($datoUsuario->amaterno ?? '')),
-            'fecha_ingreso' => $datoUsuario->ingreso,
-            'antiguedad_anios' => $antiguedad['anios'],
-            'antiguedad_meses' => $antiguedad['meses'],
-            'antiguedad_dias' => $antiguedad['dias'],
-            'anio_actual' => [
-                'dias_totales' => $acumulada->dias_totales,
-                'dias_tomados' => $acumulada->dias_tomados,
-                'dias_pendientes' => $acumulada->dias_pendientes
-            ],
-            'historico' => $this->obtenerHistoricoAcumulado($userId),
-            'total_general' => $this->calcularTotalesGenerales($userId)
-        ];
-    }
-
-    /**
      * Calcular resumen en tiempo real
      */
     private function calcularResumenEnTiempoReal($userId, $datoUsuario, $anioActual): array
@@ -238,32 +194,6 @@ class EventosController extends Controller
         } catch (\Exception $e) {
             Log::error('Error guardando en tabla acumulada: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Obtener histórico acumulado
-     */
-    private function obtenerHistoricoAcumulado($userId): array
-    {
-        $historico = [];
-        $anioActual = date('Y');
-
-        $acumuladas = VacacionesAcumulada::where('user_id', $userId)
-            ->where('anio', '<', $anioActual)
-            ->orderBy('anio', 'desc')
-            ->limit(5)
-            ->get();
-
-        foreach ($acumuladas as $acumulada) {
-            $historico[$acumulada->anio] = [
-                'antiguedad_anios' => $this->calcularAntiguedadParaAnio($userId, $acumulada->anio),
-                'dias_totales' => $acumulada->dias_totales,
-                'dias_tomados' => $acumulada->dias_tomados,
-                'dias_pendientes' => $acumulada->dias_pendientes
-            ];
-        }
-
-        return $historico;
     }
 
     /**
@@ -658,6 +588,32 @@ class EventosController extends Controller
             'errores' => $errores,
             'fines_semana_en_rango' => $finesDeSemanaEnRango
         ];
+    }
+
+    /**
+     * Obtener días disponibles para un usuario
+     */
+    public function obtenerDiasDisponibles($userId)
+    {
+        try {
+            $resumen = $this->obtenerResumenVacaciones($userId);
+            $datoUsuario = DatoUsuario::where('user_id', $userId)->first();
+
+            return response()->json([
+                'fecha_ingreso' => $datoUsuario->ingreso,
+                'dias_totales' => $resumen['anio_actual']['dias_totales'] ?? 0,
+                'dias_tomados' => $resumen['anio_actual']['dias_tomados'] ?? 0,
+                'dias_pendientes' => $resumen['anio_actual']['dias_pendientes'] ?? 0,
+                'usuario' => $resumen['usuario'] ?? 'Usuario',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'dias_totales' => 0,
+                'dias_tomados' => 0,
+                'dias_pendientes' => 0,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
