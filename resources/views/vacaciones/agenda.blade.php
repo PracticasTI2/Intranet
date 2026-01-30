@@ -128,7 +128,8 @@
 
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <a class="btn btn-danger text-white d-none" id="btnEliminar" name="btnEliminar" style="background-color: #d33;">Eliminar</a>
+                                <a class="btn btn-danger text-white d-none" id="btnEliminar" name="btnEliminar"
+                                    style="background-color: #d33;">Eliminar</a>
                                 <button class="btn btn-primary" id="btnAccion" type="submit">Registrar</button>
 
                                 @if ($rol != 2)
@@ -290,6 +291,10 @@
                 timeZone: 'America/Mexico_City',
                 initialView: 'dayGridMonth',
                 locale: 'es',
+                weekends: false, // oculta sábado y domingo
+                dayHeaderFormat: {
+                    weekday: 'long' // muestra los titulos completos 
+                },
                 headerToolbar: {
                     left: 'prev, next, today',
                     center: 'title',
@@ -414,11 +419,21 @@
                 },
 
                 // Muestra cada evento en el calendario, primero el asunto y luego el nombre del usuario
-                eventContent: function(arg) {
-                    return {
-                        html: '<div class="m-2"><b>' + arg.event.extendedProps.asunto + ' - ' + arg
-                            .event.title + '</b></div>',
-                    };
+                // eventContent: function(arg) {
+                //     return {
+                //         html: '<div class="m-2"><b>' + arg.event.extendedProps.asunto + ' - ' + arg
+                //             .event.title + '</b></div>',
+                //     };
+                // }
+
+                eventDidMount: function(info) {
+
+                    info.el.style.cursor = 'pointer';
+
+                    const titleEl = info.el.querySelector('.fc-event-title');
+
+                    titleEl.classList.add('m-2', 'fc-custom-title');
+                    titleEl.innerHTML = `<b>${info.event.extendedProps.asunto} - ${info.event.title}</b>`;
                 }
 
             });
@@ -527,6 +542,9 @@
                     fechafin: document.getElementById('fechafin').value,
                     iduserev: config.rol === 2 ? config.iduser : ''
                 });
+
+                // Agregar parámetro para indicar que viene de agenda
+                formData.append('desde_agenda', 'true');
 
                 fetch(config.APP_URL + '/registrar', {
                         method: 'POST',

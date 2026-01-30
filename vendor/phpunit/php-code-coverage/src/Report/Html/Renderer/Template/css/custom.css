@@ -1,0 +1,15 @@
+.fc-custom-title {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Día de la semana en la cabecera */
+.fc-col-header-cell-cushion {
+    text-transform: capitalize;
+}
+
+/* Mes y año en el título principal */
+.fc-toolbar-title {
+    text-transform: capitalize;
+}

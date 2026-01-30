@@ -643,7 +643,8 @@ class EventosController extends Controller
                     ? $evento->datoUsuario->nombre . ' ' . $evento->datoUsuario->apaterno
                     : $evento->nombre_usuario;
 
-                $titulo = $evento->asunto ? $evento->asunto . " ({$nombre})" : $nombre;
+                // $titulo = $evento->asunto ? $evento->asunto . " ({$nombre})" : $nombre;
+                $titulo = $nombre;
 
                 return [
                     'id' => $evento->id,
