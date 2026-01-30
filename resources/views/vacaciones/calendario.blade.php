@@ -24,6 +24,9 @@
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous">
     </script>
 
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <div class="row justify-content-center" id="calendar-container" data-sam="{{ $sam }}"
         data-rol="{{ $rol }}" data-iduser="{{ $iduser }}" data-app-url="{{ url('/') }}"
         data-csrf-token="{{ csrf_token() }}">
@@ -150,15 +153,15 @@
                                 <div class="text-center mt-1">
                                     <small class="text-muted">
                                         @if ($porcentaje >= 100)
-                                            <i class="fas fa-check-circle text-success me-1"></i>Vacaciones completadas
+                                            <i class="fas fa-check-circle me-1"></i>Vacaciones completadas
                                         @elseif($porcentaje >= 75)
-                                            <i class="fas fa-clock text-info me-1"></i>Avanzado
+                                            <i class="fas fa-clock me-1"></i>Avanzado
                                         @elseif($porcentaje >= 50)
-                                            <i class="fas fa-hourglass-half text-primary me-1"></i>En progreso
+                                            <i class="fas fa-hourglass-half me-1"></i>En progreso
                                         @elseif($porcentaje > 0)
-                                            <i class="fas fa-play-circle text-warning me-1"></i>Iniciado
+                                            <i class="fas fa-play-circle me-1"></i>Iniciado
                                         @else
-                                            <i class="fas fa-calendar-plus text-secondary me-1"></i>Sin días tomados
+                                            <i class="fas fa-calendar-plus me-1"></i>Sin días tomados
                                         @endif
                                     </small>
                                 </div>
@@ -241,6 +244,13 @@
                                     </div>
                                 </div>
 
+                                <!-- Aviso sobre fines de semana -->
+                                <div class="alert alert-info py-2 mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle"></i> Se excluyen fines de semana
+                                    </small>
+                                </div>
+
                             </div>
 
                             <div class="modal-footer">
@@ -309,6 +319,20 @@
                 },
                 events: config.APP_URL + '/listar',
 
+                eventDidMount: function(info) {
+                    // Cambia cursor a pointer
+                    info.el.style.cursor = 'pointer';
+
+                    // Agregar tooltip que es una pequeña caja de texto emergente que aparece al pasar el puntero del ratón (hover)
+                    // info.el.title = info.event.title;
+                },
+
+                // Deshabiitar fines de semana
+                // businessHours: {
+                //     // Días de la semana que son laborables (0 = Domingo, ..., 4=Viernes)
+                //     daysOfWeek: [1, 2, 3, 4, 5],
+                // },
+
                 // Al hacer clic en una fecha
                 dateClick: function(info) {
                     console.log('Clic en fecha:', info.dateStr);
@@ -321,6 +345,20 @@
                         Swal.fire({
                             title: 'Fecha no válida',
                             text: 'No puedes seleccionar fechas pasadas. Por favor, selecciona una fecha de hoy en adelante.',
+                            icon: 'warning',
+                            confirmButtonText: 'Aceptar'
+                        });
+                        return; // No abrir el modal
+                    }
+
+                    // Validar que no sea fin de semana 
+                    const fechaObj = new Date(fechaClic);
+                    const diaSemana = fechaObj.getDay(); // 6=Domingo, 5=Sábado
+
+                    if (diaSemana === 5 || diaSemana === 6) {
+                        Swal.fire({
+                            title: 'Día no laborable',
+                            text: 'No puedes seleccionar fines de semana. Por favor, selecciona un día hábil.',
                             icon: 'warning',
                             confirmButtonText: 'Aceptar'
                         });
@@ -562,7 +600,7 @@
                         myModal.hide();
                         Swal.fire({
                             title: 'Aviso',
-                            text: data.msg,
+                            html: data.msg,
                             icon: data.tipo === 'success' ? 'success' : 'warning',
                             confirmButtonText: 'Aceptar'
                         });

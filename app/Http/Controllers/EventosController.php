@@ -138,34 +138,6 @@ class EventosController extends Controller
 
     // ========== MÉTODOS PARA OBTENER RESUMEN ==========
 
-    // Obtener resumen de vacaciones (prioriza tabla acumulada)
-
-    // private function obtenerResumenVacaciones($userId): array
-    // {
-    //     try {
-    //         $datoUsuario = DatoUsuario::where('user_id', $userId)->first();
-    //         if (!$datoUsuario) return $this->estructuraResumenVacia();
-
-    //         $anioActual = date('Y');
-    //         $fechaIngreso = $datoUsuario->ingreso;
-    //         if (!$fechaIngreso) return $this->estructuraResumenVacia($datoUsuario);
-
-    //         // Intentar obtener de tabla acumulada
-    //         // $resumen = $this->obtenerDeTablaAcumulada($userId, $anioActual);
-
-    //         // Si no hay en tabla acumulada, calcular en tiempo real
-    //         // if (!$resumen) {
-    //         $resumen = $this->calcularResumenEnTiempoReal($userId, $datoUsuario, $anioActual);  // Calcular en tiempo real (primera vez)
-    //         $this->guardarEnTablaAcumulada($userId, $anioActual, $resumen);   // Guardar en tabla acumulada para futuras consultas
-    //         // }
-
-    //         return $resumen;
-    //     } catch (\Exception $e) {
-    //         Log::error('Error obteniendo resumen de vacaciones: ' . $e->getMessage());
-    //         return $this->estructuraResumenVacia();
-    //     }
-    // }
-
     private function obtenerResumenVacaciones($userId): array
     {
         try {
@@ -426,12 +398,54 @@ class EventosController extends Controller
     public function registrar(Request $request)
     {
         $nombreuser = $request->input('nombre_user');
-        // $asunto = $request->input('asunto');
-        $asunto = $request->input('asunto', 'Vacaciones'); // vacaciones por defecto al no llenarse el campo de asunto para el caso de Calendario
+        $asunto = $request->input('asunto', 'Vacaciones');
         $fechain = $request->input('fechain');
         $fechafin = $request->input('fechafin');
         $id = $request->input('id');
         $iduser = $request->input('iduserev');
+
+        // ========== VALIDAR LÍMITES DE VACACIONES ==========
+        if (!$id) { // Solo validar para nuevas solicitudes
+            $diasSolicitados = $this->calcularDiasHabilesEntreFechas($fechain, $fechafin);
+            $resumen = $this->obtenerResumenVacaciones($iduser);
+
+            $diasDisponibles = $resumen['anio_actual']['dias_pendientes'] ?? 0;
+            $diasTomados = $resumen['anio_actual']['dias_tomados'] ?? 0;
+            $diasTotales = $resumen['anio_actual']['dias_totales'] ?? 0;
+
+            // Mensajes personalizados según la situación
+            if ($diasDisponibles <= 0) {
+                return response()->json([
+                    'msg' => "<strong>Ya no tienes días de vacaciones disponibles</strong><br>
+                     Has utilizado tus <strong>{$diasTotales} días</strong> correspondientes para este año.<br>
+                     <small>Si necesitas días adicionales, contacta a Recursos Humanos.</small>",
+                    'tipo' => 'error',
+                    'dias_disponibles' => $diasDisponibles,
+                    'dias_tomados' => $diasTomados,
+                    'dias_totales' => $diasTotales,
+                    'agotado' => true
+                ]);
+            }
+
+            if ($diasSolicitados > $diasDisponibles) {
+                $excedente = $diasSolicitados - $diasDisponibles;
+
+                return response()->json([
+                    'msg' => "<strong>Límite de vacaciones excedido</strong><br>
+                     Días disponibles: <strong class='text-success'>{$diasDisponibles}</strong><br>
+                     Días solicitados: <strong class='text-warning'>{$diasSolicitados}</strong><br>
+                     <span class='text-danger'>Excedente: {$excedente} días</span><br>
+                     <small>Por favor, ajusta tu solicitud a los días disponibles.</small>",
+                    'tipo' => 'warning',
+                    'dias_disponibles' => $diasDisponibles,
+                    'dias_solicitados' => $diasSolicitados,
+                    'dias_tomados' => $diasTomados,
+                    'dias_totales' => $diasTotales,
+                    'excedente' => $excedente
+                ]);
+            }
+        }
+        // ========== FIN VALIDACIÓN ==========
 
         // Buscar evento existente
         $eventoExistente = FechaVacacione::find($id);
@@ -599,6 +613,51 @@ class EventosController extends Controller
             Log::error('Error verificando disponibilidad: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    // Método para validar que no incluya fines de semana
+    private function validarFinesDeSemana($fechain, $fechafin): array
+    {
+        $inicio = Carbon::parse($fechain);
+        $fin = Carbon::parse($fechafin);
+        $errores = [];
+
+        // Verificar si la fecha de inicio es fin de semana
+        if ($inicio->isWeekend()) {
+            $errores[] = "La fecha de inicio ({$inicio->format('d/m/Y')}) es " .
+                ($inicio->isSaturday() ? 'sábado' : 'domingo') .
+                ". Por favor selecciona un día hábil.";
+        }
+
+        // Verificar si la fecha final es fin de semana
+        if ($fin->isWeekend()) {
+            $errores[] = "La fecha final ({$fin->format('d/m/Y')}) es " .
+                ($fin->isSaturday() ? 'sábado' : 'domingo') .
+                ". Por favor selecciona un día hábil.";
+        }
+
+        // Verificar si hay fines de semana en el rango (opcional)
+        $fechaActual = $inicio->copy();
+        $finesDeSemanaEnRango = [];
+
+        while ($fechaActual <= $fin) {
+            if ($fechaActual->isWeekend()) {
+                $finesDeSemanaEnRango[] = $fechaActual->format('d/m/Y') .
+                    " (" . ($fechaActual->isSaturday() ? 'Sáb' : 'Dom') . ")";
+            }
+            $fechaActual->addDay();
+        }
+
+        if (!empty($finesDeSemanaEnRango)) {
+            $errores[] = "El rango seleccionado incluye " . count($finesDeSemanaEnRango) .
+                " día(s) de fin de semana: " . implode(', ', $finesDeSemanaEnRango);
+        }
+
+        return [
+            'valido' => empty($errores),
+            'errores' => $errores,
+            'fines_semana_en_rango' => $finesDeSemanaEnRango
+        ];
     }
 
 
